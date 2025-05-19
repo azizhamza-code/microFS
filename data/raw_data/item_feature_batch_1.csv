@@ -1,0 +1,4 @@
+item_id,timestamp,item_category,price
+101,2023-01-01 09:00:00+00:00,electronics,149.99
+102,2023-01-01 09:00:00+00:00,clothing,29.99
+103,2023-01-01 09:00:00+00:00,books,12.99

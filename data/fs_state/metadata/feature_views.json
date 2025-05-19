@@ -1,0 +1,58 @@
+{
+    "recommendation_clicks_v1": {
+        "name": "recommendation_clicks_v1",
+        "label_fg_name": "user_activity",
+        "label_column": "conversion",
+        "label_event_time_column": "timestamp",
+        "feature_group_joins": [
+            {
+                "name": "user_profile",
+                "on": [
+                    "user_id"
+                ],
+                "prefix": "user_profile__"
+            },
+            {
+                "name": "item_feature",
+                "on": [
+                    "item_id"
+                ],
+                "prefix": "item__"
+            }
+        ],
+        "declared_transforms": [
+            {
+                "feature_name": "duration_sec",
+                "transform_type": "scale"
+            },
+            {
+                "feature_name": "price",
+                "transform_type": "scale"
+            },
+            {
+                "feature_name": "user_level",
+                "transform_type": "one_hot_encode"
+            },
+            {
+                "feature_name": "item_category",
+                "transform_type": "one_hot_encode"
+            }
+        ],
+        "computed_transform_params": {
+            "duration_sec": {
+                "type": "scale",
+                "params": {
+                    "mean": 104.37931034482757,
+                    "std": 41.904878503159175
+                }
+            },
+            "item__price": {
+                "type": "scale",
+                "params": {
+                    "mean": 73.61068965517242,
+                    "std": 61.35809050920637
+                }
+            }
+        }
+    }
+}

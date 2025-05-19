@@ -1,0 +1,56 @@
+{
+    "user_activity": {
+        "name": "user_activity",
+        "primary_key_columns": [
+            "user_id",
+            "item_id"
+        ],
+        "event_time_column": "timestamp",
+        "schema": {
+            "user_id": "int64",
+            "item_id": "int64",
+            "timestamp": "datetime64[ns, utc]",
+            "duration_sec": "float64",
+            "activity_type": "object",
+            "conversion": "int64"
+        },
+        "online_key_columns": [
+            "user_id",
+            "item_id"
+        ]
+    },
+    "user_profile": {
+        "name": "user_profile",
+        "primary_key_columns": [
+            "user_id",
+            "timestamp"
+        ],
+        "event_time_column": "timestamp",
+        "schema": {
+            "user_id": "int64",
+            "timestamp": "datetime64[ns, utc]",
+            "user_level": "object",
+            "has_premium_badge": "bool"
+        },
+        "online_key_columns": [
+            "user_id"
+        ]
+    },
+    "item_feature": {
+        "name": "item_feature",
+        "primary_key_columns": [
+            "item_id",
+            "timestamp"
+        ],
+        "event_time_column": "timestamp",
+        "schema": {
+            "item_id": "int64",
+            "timestamp": "datetime64[ns, utc]",
+            "item_category": "object",
+            "price": "float64"
+        },
+        "online_key_columns": [
+            "item_id"
+        ]
+    }
+}

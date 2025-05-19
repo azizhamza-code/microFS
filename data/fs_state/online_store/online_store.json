@@ -1,0 +1,114 @@
+{
+    "user_activity": {
+        "[1, 101]": {
+            "user_id": 1,
+            "item_id": 101,
+            "timestamp": "2023-01-01T10:00:00+00:00",
+            "duration_sec": 120.5,
+            "activity_type": "view",
+            "conversion": 0
+        },
+        "[1, 102]": {
+            "user_id": 1,
+            "item_id": 102,
+            "timestamp": "2023-01-02T11:00:00+00:00",
+            "duration_sec": 85.2,
+            "activity_type": "click",
+            "conversion": 1
+        },
+        "[2, 101]": {
+            "user_id": 2,
+            "item_id": 101,
+            "timestamp": "2023-01-01T09:00:00+00:00",
+            "duration_sec": 45.0,
+            "activity_type": "view",
+            "conversion": 0
+        },
+        "[2, 103]": {
+            "user_id": 2,
+            "item_id": 103,
+            "timestamp": "2023-01-03T14:00:00+00:00",
+            "duration_sec": 200.1,
+            "activity_type": "purchase",
+            "conversion": 1
+        },
+        "[1, 103]": {
+            "user_id": 1,
+            "item_id": 103,
+            "timestamp": "2023-01-04T09:00:00+00:00",
+            "duration_sec": 90.0,
+            "activity_type": "view",
+            "conversion": 0
+        },
+        "[2, 102]": {
+            "user_id": 2,
+            "item_id": 102,
+            "timestamp": "2023-01-05T12:00:00+00:00",
+            "duration_sec": 150.3,
+            "activity_type": "click",
+            "conversion": 1
+        },
+        "[3, 101]": {
+            "user_id": 3,
+            "item_id": 101,
+            "timestamp": "2023-01-05T15:00:00+00:00",
+            "duration_sec": 60.5,
+            "activity_type": "view",
+            "conversion": 0
+        },
+        "[3, 102]": {
+            "user_id": 3,
+            "item_id": 102,
+            "timestamp": "2023-01-06T10:00:00+00:00",
+            "duration_sec": 110.2,
+            "activity_type": "purchase",
+            "conversion": 1
+        }
+    },
+    "user_profile": {
+        "[1]": {
+            "user_id": 1,
+            "timestamp": "2023-01-06T08:30:00+00:00",
+            "user_level": "gold",
+            "has_premium_badge": true
+        },
+        "[2]": {
+            "user_id": 2,
+            "timestamp": "2023-01-07T11:00:00+00:00",
+            "user_level": "silver",
+            "has_premium_badge": false
+        },
+        "[3]": {
+            "user_id": 3,
+            "timestamp": "2023-01-05T10:15:00+00:00",
+            "user_level": "bronze",
+            "has_premium_badge": false
+        }
+    },
+    "item_feature": {
+        "[101]": {
+            "item_id": 101,
+            "timestamp": "2023-01-05T10:00:00+00:00",
+            "item_category": "electronics",
+            "price": 139.99
+        },
+        "[102]": {
+            "item_id": 102,
+            "timestamp": "2023-01-06T10:00:00+00:00",
+            "item_category": "clothing",
+            "price": 24.99
+        },
+        "[103]": {
+            "item_id": 103,
+            "timestamp": "2023-01-01T09:00:00+00:00",
+            "item_category": "books",
+            "price": 12.99
+        },
+        "[104]": {
+            "item_id": 104,
+            "timestamp": "2023-01-05T10:00:00+00:00",
+            "item_category": "electronics",
+            "price": 199.99
+        }
+    }
+}
