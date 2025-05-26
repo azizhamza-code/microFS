@@ -2,7 +2,7 @@
 import pytest
 import pandas as pd
 import os
-from microfs.core_api import FeatureStore
+from microfs.core import FeatureStore
 from microfs.utils import get_project_root
 
 # Sample data is now provided by conftest.py
@@ -27,10 +27,9 @@ def test_feature_group_creation(fs_instance):
     assert "user_activity" in fs_instance.list_feature_groups()
     
     # Check if the feature group has the right properties
-    fg_meta = fg.get_metadata()
-    assert fg_meta['name'] == "user_activity"
-    assert fg_meta['primary_key_columns'] == ["user_id", "item_id"]
-    assert fg_meta['event_time_column'] == "timestamp"
+    assert fg.name == "user_activity"
+    assert fg.primary_key_columns == ["user_id", "item_id"]
+    assert fg.event_time_column == "timestamp"
 
 def test_insert_and_retrieve(fs_instance, sample_data):
     """Test inserting data into feature groups and retrieving it."""
@@ -61,20 +60,11 @@ def test_insert_and_retrieve(fs_instance, sample_data):
     assert ua_data['user_id'].tolist() == [1, 1, 2, 2]
     
     # Check online store
-    online_store = fs_instance._state.online_store
-    
-    # Verify data in online store
-    assert (1, 102) in online_store["user_activity"]
-    assert online_store["user_activity"][(1, 102)]["conversion"] == 1
-    
-    # The latest data should have timestamp 2023-01-04
-    timestamp_from_store = pd.Timestamp(online_store["user_activity"][(1, 102)]["timestamp"])
-    expected_timestamp = pd.Timestamp('2023-01-02 11:00:00+00:00')
-    
-    # Compare the timestamps (including time parts)
-    assert timestamp_from_store == expected_timestamp
-    
-    # Verify features can be selected
     online_data = fg_ua.get_online_features({"user_id": 1, "item_id": 102})
     assert online_data["conversion"] == 1
-    assert online_data["activity_type"] == "click" 
+    assert online_data["activity_type"] == "click"
+    
+    # Verify timestamp
+    timestamp_from_store = pd.Timestamp(online_data["timestamp"])
+    expected_timestamp = pd.Timestamp('2023-01-02 11:00:00+00:00')
+    assert timestamp_from_store == expected_timestamp 

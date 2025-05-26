@@ -3,9 +3,8 @@
 import pytest
 import shutil
 import os
-from microfs.core_api import FeatureStore
+from microfs.core import FeatureStore, reset_all_state
 from microfs.utils import setup_project_dirs, get_state_dir
-from microfs.internal_logic import _clear_minimal_state
 import pandas as pd
 
 @pytest.fixture(scope="function")
@@ -36,7 +35,7 @@ def fs_instance():
     setup_project_dirs()
     
     # Clear in-memory global state
-    _clear_minimal_state()
+    reset_all_state()
     
     # Initialize fresh FeatureStore
     fs = FeatureStore()

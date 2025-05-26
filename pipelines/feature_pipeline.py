@@ -2,7 +2,7 @@
 import pandas as pd
 import os
 import argparse
-from microfs.core_api import FeatureStore
+from microfs.core import FeatureStore
 from microfs.utils import simple_logger
 
 def run_feature_pipeline(fs: FeatureStore, raw_data_dir: str):
@@ -13,162 +13,162 @@ def run_feature_pipeline(fs: FeatureStore, raw_data_dir: str):
     1. Reads raw CSV data from the given directory
     2. Creates feature groups if they don't exist
     3. Ingests the data into the feature groups
+    4. Creates a feature view for ML training
     
     Args:
         fs: Feature store instance
         raw_data_dir: Directory containing raw CSV files
     """
-    simple_logger("info", "Starting Feature Pipeline simulation...")
+    simple_logger("info", "Starting Feature Pipeline...")
 
     # --- Read Raw Data from CSVs ---
     try:
         df_user_activity_b1 = pd.read_csv(os.path.join(raw_data_dir, 'user_activity_batch_1.csv'))
-        df_user_activity_b2 = pd.read_csv(os.path.join(raw_data_dir, 'user_activity_batch_2.csv'))
-        df_user_profile_b1 = pd.read_csv(os.path.join(raw_data_dir, 'user_profile_batch_1.csv'))
-        df_user_profile_b2 = pd.read_csv(os.path.join(raw_data_dir, 'user_profile_batch_2.csv'))
-        df_item_feature_b1 = pd.read_csv(os.path.join(raw_data_dir, 'item_feature_batch_1.csv'))
-        df_item_feature_b2 = pd.read_csv(os.path.join(raw_data_dir, 'item_feature_batch_2.csv'))
+        df_user_activity_b1['timestamp'] = pd.to_datetime(df_user_activity_b1['timestamp'], utc=True)
         
-        # Log data summary
+        df_user_activity_b2 = pd.read_csv(os.path.join(raw_data_dir, 'user_activity_batch_2.csv'))
+        df_user_activity_b2['timestamp'] = pd.to_datetime(df_user_activity_b2['timestamp'], utc=True)
+        
+        df_user_profile_b1 = pd.read_csv(os.path.join(raw_data_dir, 'user_profile_batch_1.csv'))
+        df_user_profile_b1['timestamp'] = pd.to_datetime(df_user_profile_b1['timestamp'], utc=True)
+        
+        df_user_profile_b2 = pd.read_csv(os.path.join(raw_data_dir, 'user_profile_batch_2.csv'))
+        df_user_profile_b2['timestamp'] = pd.to_datetime(df_user_profile_b2['timestamp'], utc=True)
+        
+        df_item_feature_b1 = pd.read_csv(os.path.join(raw_data_dir, 'item_feature_batch_1.csv'))
+        df_item_feature_b1['timestamp'] = pd.to_datetime(df_item_feature_b1['timestamp'], utc=True)
+        
+        df_item_feature_b2 = pd.read_csv(os.path.join(raw_data_dir, 'item_feature_batch_2.csv'))
+        df_item_feature_b2['timestamp'] = pd.to_datetime(df_item_feature_b2['timestamp'], utc=True)
+        
         simple_logger("info", f"Successfully read raw data CSVs from {raw_data_dir}")
-        simple_logger("info", f"User Activity Batch 1: {df_user_activity_b1.shape[0]} rows")
-        simple_logger("info", f"User Activity Batch 2: {df_user_activity_b2.shape[0]} rows")
-        simple_logger("info", f"User Profile Batch 1: {df_user_profile_b1.shape[0]} rows")
-        simple_logger("info", f"User Profile Batch 2: {df_user_profile_b2.shape[0]} rows")
-        simple_logger("info", f"Item Feature Batch 1: {df_item_feature_b1.shape[0]} rows")
-        simple_logger("info", f"Item Feature Batch 2: {df_item_feature_b2.shape[0]} rows")
+        simple_logger("info", f"User Activity: {df_user_activity_b1.shape[0] + df_user_activity_b2.shape[0]} total rows")
+        simple_logger("info", f"User Profile: {df_user_profile_b1.shape[0] + df_user_profile_b2.shape[0]} total rows")
+        simple_logger("info", f"Item Feature: {df_item_feature_b1.shape[0] + df_item_feature_b2.shape[0]} total rows")
     
     except FileNotFoundError as e:
         simple_logger("error", f"Raw data CSV not found: {e}. Ensure CSVs are in '{raw_data_dir}'.")
         return
-
     except Exception as e:
         simple_logger("error", f"Error reading CSVs: {e}")
         return
 
-    # --- Define & Create Feature Groups (Idempotent) ---
+    # --- Create Feature Groups ---
     try:
         # User Activity Feature Group
-        fg_ua_schema = {
-            'user_id': 'int64', 
-            'item_id': 'int64', 
-            'timestamp': 'datetime64[ns, utc]', 
-            'duration_sec': 'float64', 
-            'activity_type': 'object', 
-            'conversion': 'int64'
-        }
-        
-        try: 
-            fg_ua = fs.get_feature_group("user_activity")
-            simple_logger("info", "FG 'user_activity' already exists.")
-        except ValueError: 
+        if "user_activity" not in fs.list_feature_groups():
             fg_ua = fs.create_feature_group(
                 "user_activity", 
                 ["user_id", "item_id"], 
                 "timestamp", 
-                fg_ua_schema, 
+                {
+                    'user_id': 'int64', 
+                    'item_id': 'int64', 
+                    'timestamp': 'datetime64[ns, utc]', 
+                    'duration_sec': 'float64', 
+                    'activity_type': 'object', 
+                    'conversion': 'int64'
+                }, 
                 ["user_id", "item_id"]
             )
-            simple_logger("info", "FG 'user_activity' created.")
+            simple_logger("info", "Created feature group 'user_activity'")
+        else:
+            fg_ua = fs.get_feature_group("user_activity")
+            simple_logger("info", "Feature group 'user_activity' already exists")
 
         # User Profile Feature Group
-        fg_up_schema = {
-            'user_id': 'int64', 
-            'timestamp': 'datetime64[ns, utc]', 
-            'user_level': 'object', 
-            'has_premium_badge': 'bool'
-        }
-        
-        try: 
-            fg_up = fs.get_feature_group("user_profile")
-            simple_logger("info", "FG 'user_profile' already exists.")
-        except ValueError: 
+        if "user_profile" not in fs.list_feature_groups():
             fg_up = fs.create_feature_group(
                 "user_profile", 
                 ["user_id", "timestamp"], 
                 "timestamp", 
-                fg_up_schema, 
+                {
+                    'user_id': 'int64', 
+                    'timestamp': 'datetime64[ns, utc]', 
+                    'user_level': 'object', 
+                    'has_premium_badge': 'bool'
+                }, 
                 ["user_id"]
             )
-            simple_logger("info", "FG 'user_profile' created.")
+            simple_logger("info", "Created feature group 'user_profile'")
+        else:
+            fg_up = fs.get_feature_group("user_profile")
+            simple_logger("info", "Feature group 'user_profile' already exists")
 
         # Item Feature Feature Group
-        fg_if_schema = {
-            'item_id': 'int64', 
-            'timestamp': 'datetime64[ns, utc]', 
-            'item_category': 'object', 
-            'price': 'float64'
-        }
-        
-        try: 
-            fg_if = fs.get_feature_group("item_feature")
-            simple_logger("info", "FG 'item_feature' already exists.")
-        except ValueError: 
+        if "item_feature" not in fs.list_feature_groups():
             fg_if = fs.create_feature_group(
                 "item_feature", 
                 ["item_id", "timestamp"], 
                 "timestamp", 
-                fg_if_schema, 
+                {
+                    'item_id': 'int64', 
+                    'timestamp': 'datetime64[ns, utc]', 
+                    'item_category': 'object', 
+                    'price': 'float64'
+                }, 
                 ["item_id"]
             )
-            simple_logger("info", "FG 'item_feature' created.")
+            simple_logger("info", "Created feature group 'item_feature'")
+        else:
+            fg_if = fs.get_feature_group("item_feature")
+            simple_logger("info", "Feature group 'item_feature' already exists")
+            
     except Exception as e:
-        simple_logger("error", f"Error defining/creating FGs: {e}")
+        simple_logger("error", f"Error creating feature groups: {e}")
         return
 
-    # --- Ingest Data (Simulating batches from Feature Engineering jobs) ---
+    # --- Ingest Data ---
     try:
-        simple_logger("info", "Ingesting Batch 1 data...")
+        simple_logger("info", "Ingesting data...")
         
-        # Ingest User Activity Batch 1
-        simple_logger("info", "Ingesting User Activity Batch 1...")
-        fg_ua.insert(df_user_activity_b1.copy())
+        # Combine batches and ingest
+        user_activity_data = pd.concat([df_user_activity_b1, df_user_activity_b2], ignore_index=True)
+        fg_ua.insert(user_activity_data)
         
-        # Ingest User Profile Batch 1
-        simple_logger("info", "Ingesting User Profile Batch 1...")
-        fg_up.insert(df_user_profile_b1.copy())
+        user_profile_data = pd.concat([df_user_profile_b1, df_user_profile_b2], ignore_index=True)
+        fg_up.insert(user_profile_data)
         
-        # Ingest Item Feature Batch 1
-        simple_logger("info", "Ingesting Item Feature Batch 1...")
-        fg_if.insert(df_item_feature_b1.copy())
-
-        simple_logger("info", "Ingesting Batch 2 data...")
+        item_feature_data = pd.concat([df_item_feature_b1, df_item_feature_b2], ignore_index=True)
+        fg_if.insert(item_feature_data)
         
-        # Ingest User Activity Batch 2
-        simple_logger("info", "Ingesting User Activity Batch 2...")
-        fg_ua.insert(df_user_activity_b2.copy())
+        simple_logger("info", "Data ingestion complete")
         
-        # Ingest User Profile Batch 2
-        simple_logger("info", "Ingesting User Profile Batch 2...")
-        fg_up.insert(df_user_profile_b2.copy())
-        
-        # Ingest Item Feature Batch 2
-        simple_logger("info", "Ingesting Item Feature Batch 2...")
-        fg_if.insert(df_item_feature_b2.copy())
     except Exception as e:
         simple_logger("error", f"Error during data ingestion: {e}")
         return
 
-    # Log summary of data in feature groups
+    # --- Create Feature View for ML Training ---
     try:
-        ua_data = fs.get_feature_group("user_activity").get_offline_data()
-        up_data = fs.get_feature_group("user_profile").get_offline_data()
-        if_data = fs.get_feature_group("item_feature").get_offline_data()
-        
-        simple_logger("info", "Feature Group Data Summary:")
-        simple_logger("info", f"User Activity: {ua_data.shape[0]} rows, {ua_data.shape[1]} columns")
-        simple_logger("info", f"User Profile: {up_data.shape[0]} rows, {up_data.shape[1]} columns")
-        simple_logger("info", f"Item Feature: {if_data.shape[0]} rows, {if_data.shape[1]} columns")
+        fv_name = "recommendation_clicks_v1"
+        if fv_name not in fs.list_feature_views():
+            fv = fs.create_feature_view(
+                fv_name,
+                "user_activity",  # label feature group
+                "conversion",     # label column
+                [
+                    {'fg_name': 'user_profile', 'on': ['user_id']},
+                    {'fg_name': 'item_feature', 'on': ['item_id']}
+                ],
+                [
+                    {'type': 'scale', 'column': 'duration_sec'},
+                    {'type': 'scale', 'column': 'price'},
+                    {'type': 'one_hot_encode', 'column': 'user_level'},
+                    {'type': 'one_hot_encode', 'column': 'item_category'}
+                ]
+            )
+            simple_logger("info", f"Created feature view '{fv_name}'")
+        else:
+            simple_logger("info", f"Feature view '{fv_name}' already exists")
+            
     except Exception as e:
-        simple_logger("warning", f"Error getting data summary: {e}")
+        simple_logger("error", f"Error creating feature view: {e}")
 
-    simple_logger("info", "Feature Pipeline simulation complete.")
+    simple_logger("info", "Feature Pipeline complete")
 
 if __name__ == '__main__':
-    # This is for testing the pipeline script directly
     from microfs.utils import get_project_root, setup_project_dirs
     
-    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Run the feature pipeline')
     parser.add_argument('--raw_data_dir', type=str, default=None,
                         help='Directory containing raw CSV files')
@@ -176,26 +176,22 @@ if __name__ == '__main__':
                         help='Reset all feature store state before running the pipeline')
     args = parser.parse_args()
     
-    # Setup directories
     setup_project_dirs()
     
-    # Determine raw data directory
     if args.raw_data_dir:
         raw_data_d = args.raw_data_dir
     else:
         project_r = get_project_root()
         raw_data_d = str(project_r / "data" / "raw_data")
     
-    # Initialize feature store
     fs_instance = FeatureStore()
     
-    # Reset if requested
     if args.reset:
         simple_logger("warning", "Resetting feature store state...")
-        fs_instance.reset_all_state_FOR_DEMO_ONLY()
+        fs_instance.reset_all_state()
     
-    simple_logger("info", f"Running feature_pipeline.py standalone with raw data from: {raw_data_d}")
+    simple_logger("info", f"Running feature pipeline with raw data from: {raw_data_d}")
     run_feature_pipeline(fs_instance, raw_data_d)
     
-    # Verify by listing FGs
-    simple_logger("info", f"Available Feature Groups: {fs_instance.list_feature_groups()}") 
+    simple_logger("info", f"Available Feature Groups: {fs_instance.list_feature_groups()}")
+    simple_logger("info", f"Available Feature Views: {fs_instance.list_feature_views()}") 

@@ -1,153 +1,152 @@
-# microFS: A Simplified Feature Store
+# MicroFS 
 
-microFS is a minimalist, educational implementation of a feature store designed to demonstrate core concepts like data management, transformations, and point-in-time correctness.
+A simple, educational implementation of a feature store to demonstrate core concepts.
 
-## Core Idea of a Feature Store
+## What is a Feature Store?
 
-A feature store is a specialized data system that:
+A feature store is a centralized repository for storing, managing, and serving machine learning features. It provides:
 
-1. **Stores and manages features** for machine learning models in a centralized repository
-2. **Ensures consistent feature transformations** across training and inference
-3. **Maintains point-in-time correctness** to prevent data leakage
-4. **Serves features** for both offline training and online inference
+- **Feature Groups**: Collections of related features with consistent schemas
+- **Feature Views**: Logical views that join multiple feature groups for ML training
+- **Online Store**: Fast feature serving for real-time inference
+- **Offline Store**: Historical feature data for training and batch processing
+- **Feature Transformations**: Data preprocessing and feature engineering
 
-microFS implements these core ideas in a simplified way, making it ideal for learning and experimentation.
+## Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Feature Pipeline│    │Training Pipeline│    │Inference Pipeline│
+│                 │    │                 │    │                 │
+│ • Create FGs    │    │ • Create FVs    │    │ • Get Features  │
+│ • Ingest Data   │    │ • Train Models  │    │ • Make Predictions│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                    ┌─────────────────┐
+                    │   FeatureStore  │
+                    │                 │
+                    │ • FeatureGroups │
+                    │ • FeatureViews  │
+                    │ • Online Store  │
+                    │ • Offline Store │
+                    └─────────────────┘
+```
+
+## Quick Start
+
+1. **Run the complete demo:**
+   ```bash
+   python run_microfs.py
+   ```
+
+2. **Run individual pipelines:**
+   ```bash
+   # Feature pipeline
+   python pipelines/feature_pipeline.py
+   
+   # Training pipeline  
+   python pipelines/training_pipeline.py
+   
+   # Inference pipeline
+   python pipelines/inference_pipeline.py --user_id 1 --item_id 102
+   ```
+
+3. **Run tests:**
+   ```bash
+   python -m pytest tests/ -v
+   ```
+
+## Core Components
+
+### Feature Groups
+Store raw features with schemas:
+```python
+fs = FeatureStore()
+fg = fs.create_feature_group(
+    name="user_activity",
+    primary_keys=["user_id", "item_id"],
+    event_time="timestamp",
+    schema={
+        'user_id': 'int64',
+        'item_id': 'int64', 
+        'timestamp': 'datetime64[ns, utc]',
+        'duration_sec': 'float64',
+        'conversion': 'int64'
+    },
+    online_keys=["user_id", "item_id"]
+)
+```
+
+### Feature Views
+Join feature groups and apply transformations:
+```python
+fv = fs.create_feature_view(
+    name="recommendation_model_v1",
+    label_fg="user_activity",
+    label_col="conversion",
+    joins=[
+        {'fg_name': 'user_profile', 'on': ['user_id']},
+        {'fg_name': 'item_feature', 'on': ['item_id']}
+    ],
+    transforms=[
+        {'type': 'scale', 'column': 'duration_sec'},
+        {'type': 'one_hot_encode', 'column': 'user_level'}
+    ]
+)
+```
+
+### Training & Inference
+```python
+# Training
+X_train, y_train = fv.get_training_data(compute_params=True)
+
+# Inference  
+features = fv.get_inference_vector({'user_id': 1, 'item_id': 102})
+```
 
 ## Project Structure
 
 ```
 microfs/
-├── microfs/            # Core library code
-│   ├── core_api.py     # Public API classes
-│   ├── internal_logic.py # Low-level implementation details
-│   ├── transform_functions.py # Feature transformations
-│   └── utils.py        # Utility functions
-├── pipelines/          # Example ML workflows
-│   ├── feature_pipeline.py   # Data engineering pipeline
-│   ├── training_pipeline.py  # Model training pipeline
-│   └── inference_pipeline.py # Model inference pipeline
-├── tests/              # Automated tests
-├── data/               # Data directory
+├── microfs/
+│   ├── core.py          # Core feature store logic
+│   └── utils.py         # Utilities and state management
+├── pipelines/
+│   ├── feature_pipeline.py   # Data ingestion
+│   ├── training_pipeline.py  # Model training
+│   └── inference_pipeline.py # Real-time serving
+├── tests/               # Unit tests
+├── data/
 │   ├── raw_data/       # Input CSV files
-│   ├── fs_state/       # Feature store state storage
-│   └── models/         # Trained model storage
-├── pyproject.toml      # Poetry dependency management
-├── README.md           # This file
-└── Makefile            # Convenience commands
+│   └── fs_state/       # Feature store state
+├── models/             # Trained ML models
+└── run_microfs.py      # Main demo script
 ```
 
-## Setup
+## Educational Goals
 
-### Requirements
+This implementation demonstrates:
 
-- Python 3.8 or newer
-- Poetry (dependency management)
+1. **Separation of Concerns**: Clear separation between data engineering (feature pipeline), data science (training pipeline), and ML engineering (inference pipeline)
 
-### Installation
+2. **Feature Reusability**: Features defined once can be used across multiple models and use cases
 
-```bash
-# Install Poetry if you don't have it
-curl -sSL https://install.python-poetry.org | python3 -
+3. **Online/Offline Consistency**: Same feature definitions used for both training (offline) and serving (online)
 
-# Install dependencies
-make setup
-# or
-poetry install
-```
+4. **Schema Management**: Enforced schemas ensure data quality and consistency
 
-## Using microFS
+5. **Feature Transformations**: Centralized feature engineering with parameter persistence
 
-### 1. Feature Pipeline (Data Engineering)
+## Limitations
 
-Ingest data from CSV files into feature groups:
+This is an educational MVP with intentional simplifications:
 
-```bash
-make run-fp
-# or
-python pipelines/feature_pipeline.py
-```
+- No distributed computing or scalability features
+- Simple file-based storage (not production databases)
+- Basic transformation types only
+- No feature versioning or lineage tracking
+- No advanced monitoring or data quality checks
 
-This pipeline:
-- Creates feature groups for user activity, user profiles, and item features
-- Ingests data from CSV files in batches
-- Updates both offline (Parquet) and online (in-memory) stores
-
-### 2. Training Pipeline (Data Science)
-
-Create feature views, prepare training data, and train a model:
-
-```bash
-make run-train
-# or
-python pipelines/training_pipeline.py
-```
-
-This pipeline:
-- Creates a feature view that joins multiple feature groups
-- Computes and stores transformation parameters
-- Applies transformations to features
-- Trains a simple logistic regression model
-- Saves the model for later use
-
-### 3. Inference Pipeline (Serving)
-
-Get features for inference and make predictions:
-
-```bash
-make run-infer
-# or
-python pipelines/inference_pipeline.py
-```
-
-This pipeline:
-- Loads a trained model
-- Gets feature values for a specific entity from the online store
-- Applies the same transformations used during training
-- Makes a prediction using the model
-
-### Run All Pipelines
-
-```bash
-make run-all-pipelines
-```
-
-## Running Tests
-
-```bash
-make test
-# or
-pytest tests/
-```
-
-## Cleaning Up
-
-```bash
-make clean
-```
-
-## Key Concepts Demonstrated
-
-1. **Feature Group**: Collection of related features with a common schema and keys
-   - Example: `user_activity`, `user_profile`, `item_feature`
-
-2. **Feature View**: Definition of features joined from multiple feature groups, with transformations
-   - Example: `recommendation_clicks_v1`
-
-3. **Point-in-Time Correctness**: Ensuring that training data doesn't have "future" information
-   - Implemented via timestamp-based joins
-
-4. **Feature Transformations**: Consistent application of transformations in training and inference
-   - Scaling, one-hot encoding, etc.
-
-5. **Online/Offline Storage**: Different storage for training vs. serving
-   - Offline: Parquet files for large historical data (training)
-   - Online: In-memory key-value store for latest values (inference)
-
-## Development Notes
-
-This project is intended for educational purposes and is not production-ready. Key simplifications include:
-
-- In-memory online store (rather than Redis/DynamoDB/etc.)
-- Local file-based offline store (rather than a data lake/warehouse)
-- Limited transformation options
-- No distributed computing support
+For production use cases, consider mature solutions like Hopsworks.

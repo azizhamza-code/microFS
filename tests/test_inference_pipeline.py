@@ -3,14 +3,14 @@ import pytest
 import pandas as pd
 import os
 import pickle
-from microfs.core_api import FeatureStore
+from microfs.core import FeatureStore
 from sklearn.linear_model import LogisticRegression
 
 # Sample data is now provided by conftest.py
 
-def test_inference_workflow(fs_instance, sample_data, tmp_path):
-    """Test the end-to-end workflow of creating a model and using it for inference."""
-    # Create feature groups
+def test_inference_vector_generation(fs_instance, sample_data):
+    """Test generating inference vectors from a feature view."""
+    # Create feature groups and insert data
     fg_ua = fs_instance.create_feature_group(
         "user_activity",
         ["user_id", "item_id"],
@@ -25,29 +25,49 @@ def test_inference_workflow(fs_instance, sample_data, tmp_path):
         },
         ["user_id", "item_id"]
     )
+    
+    fg_up = fs_instance.create_feature_group(
+        "user_profile",
+        ["user_id", "timestamp"],
+        "timestamp",
+        {
+            'user_id': 'int64',
+            'timestamp': 'datetime64[ns, utc]',
+            'user_level': 'object',
+            'has_premium_badge': 'bool'
+        },
+        ["user_id"]
+    )
+    
     fg_ua.insert(sample_data['user_activity'])
+    fg_up.insert(sample_data['user_profile'])
     
-    # Create Feature View - just use duration_sec and no joins
-    feature_view_name = "conversion_prediction"
-    
+    # Create feature view
     fv = fs_instance.create_feature_view(
-        feature_view_name,
-        "user_activity",  # label_fg
-        "conversion",     # label_column
-        "timestamp",      # label_event_time_column
-        [],               # no joins for this simple test
+        "test_fv",
+        "user_activity",
+        "conversion",
         [
-            {'feature_name': 'duration_sec', 'transform_type': 'scale'}
+            {'fg_name': 'user_profile', 'on': ['user_id']}
+        ],
+        [
+            {'type': 'scale', 'column': 'duration_sec'}
         ]
     )
     
-    # Get training data with computed parameters
+    # Compute transformation parameters first
     X_train, y_train = fv.get_training_data(compute_params=True)
     
-    # Verify we have training data
-    assert not X_train.empty
-    assert 'duration_sec' in X_train.columns
+    # Get inference vector
+    entity_keys = {'user_id': 1, 'item_id': 102}
+    inference_vector = fv.get_inference_vector(entity_keys)
     
-    # Verify we've computed parameters
-    transform_params = fv.get_transform_params()
-    assert 'duration_sec' in transform_params 
+    # Check that we got a vector
+    assert not inference_vector.empty
+    
+    # Check that the vector doesn't include the label
+    assert "conversion" not in inference_vector.index
+    
+    # Check that we have some expected features
+    assert "user_id" in inference_vector.index
+    assert "item_id" in inference_vector.index 
